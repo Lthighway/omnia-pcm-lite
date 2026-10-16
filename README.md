@@ -24,6 +24,8 @@ Para habilitar a conta e os dados de demonstração, use `DEMO_MODE=true`. Em um
 
 ## Pagamentos
 
+`BILLING_MODE=sandbox` é o padrão seguro. `BILLING_MODE=live` só deve ser usado em uma instância comercial de produção, com `DEMO_MODE=false`, credenciais de produção do Mercado Pago, banco persistente e URL HTTPS.
+
 O painel autenticado inclui a área **Plano e cobrança**. O endpoint `/api/payments/checkout` cria uma assinatura mensal do plano escolhido via API oficial do Mercado Pago quando `MP_ACCESS_TOKEN` e `PUBLIC_URL` HTTPS estiverem configurados. O webhook exige `MP_WEBHOOK_SECRET`, valida `x-signature`, consulta o status oficial da assinatura e registra eventos de forma idempotente antes de atualizar o plano da empresa. No ambiente atual, o fluxo está preparado para sandbox; não anunciar cobrança real antes da ativação de produção e de um teste completo com dados operacionais persistentes.
 
 ## Implantação pública de demonstração
@@ -35,7 +37,7 @@ Para aplicar o Blueprint:
 1. Abra `https://dashboard.render.com/blueprint/new?repo=https://github.com/Lthighway/omnia-pcm-lite`.
 2. Confirme o serviço `omnia-pcm-lite-demo` e mantenha o plano gratuito para teste.
 3. Configure `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` e `PUBLIC_URL` somente no ambiente protegido do provedor, nunca no repositório.
-4. Para a prévia pública atual, mantenha `DEMO_MODE=true`; para uma operação comercial, use `DEMO_MODE=false`, banco persistente e credenciais de produção separadas.
+4. Para a prévia pública atual, mantenha `DEMO_MODE=true` e `BILLING_MODE=sandbox`; para uma operação comercial, use `DEMO_MODE=false`, `BILLING_MODE=live`, banco persistente e credenciais de produção separadas.
 5. Clique em **Apply** e teste `/api/health` antes de divulgar o endereço.
 
 ## Limitações conhecidas do MVP

@@ -237,9 +237,13 @@ app.post('/api/payments/checkout', auth, requireRole('admin'), async (req, res) 
   const plan = clean(req.body.plan, 30);
   const product = planProducts[plan];
   if (!product) return jsonError(res, 400, 'Escolha um plano pago válido.');
+  const billingMode = process.env.BILLING_MODE || 'sandbox';
+  if (!['sandbox', 'live'].includes(billingMode)) return res.status(503).json({ status: 'manual_setup_required', message: 'Modo de cobrança inválido no ambiente.' });
+  if (billingMode === 'live' && (process.env.NODE_ENV !== 'production' || process.env.DEMO_MODE === 'true')) return res.status(503).json({ status: 'manual_setup_required', message: 'Cobrança real só pode ser habilitada em uma instância comercial de produção.' });
   if (!process.env.MP_ACCESS_TOKEN) return res.status(503).json({ status: 'manual_setup_required', message: 'Checkout ainda não configurado: é necessário cadastrar uma aplicação do Mercado Pago.' });
   const origin = publicUrl();
   if (!origin) return res.status(503).json({ status: 'manual_setup_required', message: 'Checkout ainda não configurado: PUBLIC_URL precisa ser uma URL HTTPS pública.' });
+  if (billingMode === 'live' && !origin.startsWith('https://')) return res.status(503).json({ status: 'manual_setup_required', message: 'Cobrança real exige PUBLIC_URL com HTTPS.' });
 
   try {
     const subscription = await mercadoPagoRequest('/preapproval', {
