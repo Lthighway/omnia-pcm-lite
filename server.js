@@ -28,6 +28,10 @@ const planLimits = {
   essential: { equipment: 100, workOrders: 500, users: 5 },
   professional: { equipment: 1000, workOrders: 10000, users: 25 }
 };
+const planProducts = {
+  essential: { title: 'OMNIA PCM Lite Essencial', amount: 49.90 },
+  professional: { title: 'OMNIA PCM Lite Profissional', amount: 99.90 }
+};
 
 function id() { return crypto.randomUUID(); }
 function nowIso() { return new Date().toISOString(); }
@@ -202,13 +206,104 @@ app.get('/api/reports/export.csv', auth, (req, res) => {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8'); res.setHeader('Content-Disposition', 'attachment; filename="omnia-relatorio-os.csv"'); res.send('\ufeff' + csv);
 });
 
-app.post('/api/payments/checkout', auth, (req, res) => {
-  if (!process.env.MP_ACCESS_TOKEN) return res.status(503).json({ status: 'manual_setup_required', message: 'Checkout ainda não configurado: é necessário cadastrar uma aplicação e as credenciais do Mercado Pago.' });
-  return res.status(501).json({ status: 'not_implemented', message: 'A integração automática exige configurar a aplicação, URLs públicas e webhooks antes de liberar vendas.' });
+async function mercadoPagoRequest(endpoint, body) {
+  const response = await fetch(`https://api.mercadopago.com${endpoint}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const text = await response.text();
+  let payload = {};
+  try { payload = text ? JSON.parse(text) : {}; } catch { payload = {}; }
+  if (!response.ok) {
+    const error = new Error(payload.message || 'Mercado Pago recusou a solicitação.');
+    error.status = response.status;
+    throw error;
+  }
+  return payload;
+}
+
+function publicUrl() {
+  try {
+    const url = new URL(process.env.PUBLIC_URL || '');
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
+app.post('/api/payments/checkout', auth, requireRole('admin'), async (req, res) => {
+  const plan = clean(req.body.plan, 30);
+  const product = planProducts[plan];
+  if (!product) return jsonError(res, 400, 'Escolha um plano pago válido.');
+  if (!process.env.MP_ACCESS_TOKEN) return res.status(503).json({ status: 'manual_setup_required', message: 'Checkout ainda não configurado: é necessário cadastrar uma aplicação do Mercado Pago.' });
+  const origin = publicUrl();
+  if (!origin) return res.status(503).json({ status: 'manual_setup_required', message: 'Checkout ainda não configurado: PUBLIC_URL precisa ser uma URL HTTPS pública.' });
+
+  try {
+    const subscription = await mercadoPagoRequest('/preapproval', {
+      reason: product.title,
+      external_reference: `company:${req.user.company_id}`,
+      payer_email: req.user.email,
+      back_url: origin,
+      notification_url: `${origin}/api/payments/webhook`,
+      status: 'pending',
+      auto_recurring: { frequency: 1, frequency_type: 'months', transaction_amount: product.amount, currency_id: 'BRL' }
+    });
+    return res.status(201).json({ status: 'created', plan, subscriptionId: subscription.id, checkoutUrl: subscription.init_point || null });
+  } catch (error) {
+    console.error('Mercado Pago checkout error', error.status || 'unknown');
+    return res.status(502).json({ status: 'provider_error', message: 'Não foi possível criar a assinatura no Mercado Pago agora.' });
+  }
 });
-app.post('/api/payments/webhook', (req, res) => {
+
+function validMercadoPagoSignature(req) {
+  const secret = process.env.MP_WEBHOOK_SECRET;
+  const signature = String(req.headers['x-signature'] || '');
+  const requestId = String(req.headers['x-request-id'] || '');
+  const dataId = String(req.body?.data?.id || req.query['data.id'] || '');
+  const fields = Object.fromEntries(signature.split(',').map((part) => part.split('=').map((value) => value.trim())).filter(([key, value]) => key && value));
+  if (!secret || !fields.ts || !fields.v1 || !requestId || !dataId) return false;
+  const manifest = `id:${dataId};request-id:${requestId};ts:${fields.ts};`;
+  const expected = crypto.createHmac('sha256', secret).update(manifest).digest('hex');
+  const expectedBuffer = Buffer.from(expected, 'utf8');
+  const receivedBuffer = Buffer.from(fields.v1, 'utf8');
+  return expectedBuffer.length === receivedBuffer.length && crypto.timingSafeEqual(expectedBuffer, receivedBuffer);
+}
+
+function planStatusForProvider(status) {
+  if (status === 'authorized') return { planStatus: 'active' };
+  if (status === 'paused') return { planStatus: 'past_due' };
+  if (status === 'cancelled') return { planStatus: 'canceled' };
+  return { planStatus: 'manual_review' };
+}
+
+app.post('/api/payments/webhook', async (req, res) => {
   if (!process.env.MP_WEBHOOK_SECRET) return res.status(503).json({ error: 'Webhook não configurado.' });
-  res.status(202).json({ received: true, processed: false, message: 'Endpoint reservado para validação HMAC e consulta do status oficial do pagamento.' });
+  if (!validMercadoPagoSignature(req)) return res.status(401).json({ error: 'Assinatura do webhook inválida.' });
+  const type = clean(req.body?.type || req.query.type, 80);
+  const resourceId = clean(req.body?.data?.id || req.query['data.id'], 120);
+  if (!resourceId) return res.status(400).json({ error: 'Evento sem identificador de recurso.' });
+  if (type !== 'subscription_preapproval') return res.status(200).json({ received: true, processed: false, ignored: true });
+
+  try {
+    const response = await fetch(`https://api.mercadopago.com/preapproval/${encodeURIComponent(resourceId)}`, { headers: { Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}` } });
+    if (!response.ok) return res.status(502).json({ error: 'Não foi possível consultar o status da assinatura.' });
+    const subscription = await response.json();
+    const externalId = `subscription_preapproval:${subscription.id}:${subscription.status}`;
+    if (db.prepare('SELECT id FROM payment_events WHERE external_id = ?').get(externalId)) return res.json({ received: true, duplicate: true });
+    const companyId = String(subscription.external_reference || '').replace(/^company:/, '');
+    const productPlan = Object.entries(planProducts).find(([, product]) => Math.abs(Number(subscription.auto_recurring?.transaction_amount) - product.amount) < 0.01)?.[0] || null;
+    const providerStatus = planStatusForProvider(subscription.status);
+    db.transaction(() => {
+      db.prepare('INSERT INTO payment_events (id, company_id, external_id, status, payload) VALUES (?, ?, ?, ?, ?)').run(id(), companyId || null, externalId, subscription.status || 'unknown', JSON.stringify(subscription));
+      if (companyId && productPlan) db.prepare('UPDATE companies SET plan = ?, plan_status = ? WHERE id = ?').run(providerStatus.planStatus === 'canceled' ? 'free' : productPlan, providerStatus.planStatus, companyId);
+    })();
+    return res.json({ received: true, processed: Boolean(companyId && productPlan), status: subscription.status });
+  } catch (error) {
+    console.error('Mercado Pago webhook error', error.message);
+    return res.status(502).json({ error: 'Falha ao processar o webhook.' });
+  }
 });
 
 app.get('/{*splat}', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
