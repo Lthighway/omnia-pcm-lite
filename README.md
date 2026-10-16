@@ -23,6 +23,17 @@ Abra `http://localhost:3000`. A demonstração usa `admin@omnia.local` / `omnia1
 
 O endpoint `/api/payments/checkout` permanece explicitamente bloqueado até configurar uma aplicação real do Mercado Pago, um `MP_ACCESS_TOKEN`, URL pública e webhook assinado. Não existe link inventado nem liberação baseada em redirecionamento. O endpoint de webhook é apenas um placeholder seguro: a implementação de produção deve validar `x-signature`, consultar o status oficial, processar eventos de forma idempotente e atualizar o plano.
 
+## Implantação pública de demonstração
+
+O arquivo `render.yaml` prepara uma implantação gratuita no Render. Ela é adequada para demonstração e validação inicial: o plano gratuito pode dormir após inatividade e o SQLite fica em filesystem efêmero. Não use essa configuração para dados reais ou clientes pagantes sem migrar para banco persistente, backups, domínio/HTTPS e revisar segurança, privacidade e recuperação de conta.
+
+Para aplicar o Blueprint:
+
+1. Abra `https://dashboard.render.com/blueprint/new?repo=https://github.com/Lthighway/omnia-pcm-lite`.
+2. Confirme o serviço `omnia-pcm-lite-demo` e mantenha o plano gratuito para teste.
+3. Deixe `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` e `PUBLIC_URL` vazios até possuir uma aplicação real do Mercado Pago e uma URL pública definitiva.
+4. Clique em **Apply** e teste `/api/health` antes de divulgar o endereço.
+
 ## Limitações conhecidas do MVP
 
 - Ainda não há recuperação de senha por e-mail, PDF server-side, gestão completa de usuários pela interface, geração automática de OS a partir da preventiva ou integração Mercado Pago.

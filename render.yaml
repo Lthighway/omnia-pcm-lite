@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: omnia-pcm-lite-demo
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    autoDeploy: true
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_FILE
+        value: /tmp/omnia-pcm-lite.sqlite
+      - key: SESSION_DAYS
+        value: "7"
+      - key: MP_ACCESS_TOKEN
+        sync: false
+      - key: MP_WEBHOOK_SECRET
+        sync: false
+      - key: PUBLIC_URL
+        sync: false
