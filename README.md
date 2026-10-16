@@ -26,7 +26,7 @@ Para habilitar a conta e os dados de demonstração, use `DEMO_MODE=true`. Em um
 
 `BILLING_MODE=sandbox` é o padrão seguro. `BILLING_MODE=live` só deve ser usado em uma instância comercial de produção, com `DEMO_MODE=false`, credenciais de produção do Mercado Pago, banco persistente e URL HTTPS.
 
-O painel autenticado inclui a área **Plano e cobrança**. O endpoint `/api/payments/checkout` cria uma assinatura mensal do plano escolhido via API oficial do Mercado Pago quando `MP_ACCESS_TOKEN` e `PUBLIC_URL` HTTPS estiverem configurados. O webhook exige `MP_WEBHOOK_SECRET`, valida `x-signature`, consulta o status oficial da assinatura e registra eventos de forma idempotente antes de atualizar o plano da empresa. No ambiente atual, o fluxo está preparado para sandbox; não anunciar cobrança real antes da ativação de produção e de um teste completo com dados operacionais persistentes.
+O painel autenticado inclui a área **Plano e cobrança**. O endpoint `/api/payments/checkout` cria uma assinatura mensal do plano escolhido via API oficial do Mercado Pago quando `MP_ACCESS_TOKEN` e uma URL HTTPS estiverem configurados. O webhook exige `MP_WEBHOOK_SECRET`, valida `x-signature`, consulta o status oficial da assinatura e registra eventos de forma idempotente antes de atualizar o plano da empresa. A implantação Cloudflare está em modo comercial; a implantação Render permanece apenas como demonstração sandbox.
 
 ## Implantação pública de demonstração
 
@@ -45,6 +45,20 @@ Para aplicar o Blueprint:
 - Ainda não há recuperação de senha por e-mail, PDF server-side, gestão completa de usuários pela interface ou geração automática de OS a partir da preventiva.
 - O checkout de teste está configurado no Render; a ativação de pagamento em produção depende de dados comerciais, credenciais de produção e teste do webhook em ambiente público.
 - Render Free não é adequado para produção: o filesystem é efêmero, o Postgres gratuito expira e não há backups; use-o somente para prévia/teste e configure banco persistente/backup antes de clientes reais.
+
+## Versão Cloudflare Workers + D1
+
+Existe uma implantação paralela em `cloudflare/worker.js`, com o mesmo frontend e uma camada D1 assíncrona. Ela substitui o SQLite local e mantém o Render intacto como demonstração. O arquivo `wrangler.toml` está preparado para assets estáticos, migração D1 e variáveis seguras; o `database_id` precisa ser preenchido somente depois de criar o banco na conta Cloudflare.
+
+A implantação comercial publicada está em `https://omnia-pcm-lite.leohighway.workers.dev`. Ela usa o banco D1 `omnia-pcm-lite`, `DEMO_MODE=false` e `BILLING_MODE=live`, com as credenciais do Mercado Pago armazenadas como segredos no Cloudflare. O Render continua sendo a prévia sandbox.
+
+Para validar o pacote sem publicar:
+
+```powershell
+npx wrangler@latest deploy --dry-run
+```
+
+Para uma nova conta Cloudflare, crie o banco D1, aplique `cloudflare/migrations/0001_init.sql` e configure `MP_ACCESS_TOKEN` e `MP_WEBHOOK_SECRET` como segredos do ambiente de produção. O token de produção do Mercado Pago não deve ser colocado no repositório, no arquivo `wrangler.toml` ou na prévia Render.
 
 ## Testes
 
