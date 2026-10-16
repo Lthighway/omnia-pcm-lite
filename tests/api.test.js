@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dbFile = path.join(root, 'test.sqlite');
 process.env.NODE_ENV = 'test';
+process.env.DEMO_MODE = 'true';
 process.env.DB_FILE = dbFile;
 if (fs.existsSync(dbFile)) fs.rmSync(dbFile);
 const { app, db } = await import('../server.js');

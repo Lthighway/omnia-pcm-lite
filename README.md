@@ -11,12 +11,15 @@ npm start
 
 Abra `http://localhost:3000`. A demonstração usa `admin@omnia.local` / `omnia123!`.
 
+Para habilitar a conta e os dados de demonstração, use `DEMO_MODE=true`. Em uma instância comercial, mantenha `DEMO_MODE=false` (ou remova a variável) e crie a primeira conta pelo cadastro; assim, a instalação não nasce com credenciais conhecidas.
+
 ## Arquitetura
 
 - Node.js + Express 5.
 - SQLite via `better-sqlite3`, com migração em `migrations/001_init.sql`.
 - Sessão HTTP em cookie HttpOnly com token armazenado apenas como hash.
 - Senhas com bcrypt; Helmet; validação server-side; consultas sempre filtradas por `company_id`.
+- A conta e os dados de demonstração são controlados explicitamente por `DEMO_MODE` e não devem ser habilitados em uma instância comercial.
 - Frontend sem framework, responsivo e instalável como PWA.
 
 ## Pagamentos
@@ -32,7 +35,8 @@ Para aplicar o Blueprint:
 1. Abra `https://dashboard.render.com/blueprint/new?repo=https://github.com/Lthighway/omnia-pcm-lite`.
 2. Confirme o serviço `omnia-pcm-lite-demo` e mantenha o plano gratuito para teste.
 3. Configure `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` e `PUBLIC_URL` somente no ambiente protegido do provedor, nunca no repositório.
-4. Clique em **Apply** e teste `/api/health` antes de divulgar o endereço.
+4. Para a prévia pública atual, mantenha `DEMO_MODE=true`; para uma operação comercial, use `DEMO_MODE=false`, banco persistente e credenciais de produção separadas.
+5. Clique em **Apply** e teste `/api/health` antes de divulgar o endereço.
 
 ## Limitações conhecidas do MVP
 

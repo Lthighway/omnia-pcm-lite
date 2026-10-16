@@ -47,6 +47,7 @@ function cookieOptions(maxAge) { return `HttpOnly; Path=/; SameSite=Lax; Max-Age
 function tokenHash(token) { return crypto.createHash('sha256').update(token).digest('hex'); }
 
 function seed() {
+  if (process.env.DEMO_MODE !== 'true') return;
   if (db.prepare('SELECT COUNT(*) AS count FROM users').get().count > 0) return;
   const companyId = id();
   const userId = id();

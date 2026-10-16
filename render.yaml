@@ -12,6 +12,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: DEMO_MODE
+        value: "true"
       - key: DB_FILE
         value: /tmp/omnia-pcm-lite.sqlite
       - key: SESSION_DAYS
