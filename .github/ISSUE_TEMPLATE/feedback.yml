@@ -1,0 +1,24 @@
+name: Feedback do produto
+description: Compartilhe uma dúvida, sugestão ou problema observado no OMNIA PCM Lite
+title: "[Feedback] "
+labels:
+  - feedback
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por ajudar a melhorar o OMNIA PCM Lite.
+  - type: textarea
+    id: context
+    attributes:
+      label: O que você tentou fazer?
+      description: Conte o fluxo ou tela em que percebeu a questão.
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Feedback
+      description: O que aconteceu ou o que você gostaria de ver?
+    validations:
+      required: true

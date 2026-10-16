@@ -2,6 +2,8 @@
 
 MVP responsivo/PWA em português brasileiro para pequenas operações de manutenção. O produto cobre painel, equipamentos, ordens de serviço, preventivas, estoque, relatórios CSV, cadastro inicial de empresa e isolamento multiempresa no backend.
 
+**Acesso público:** [omnia-pcm-lite.leohighway.workers.dev](https://omnia-pcm-lite.leohighway.workers.dev) · [Release v0.1.0](https://github.com/Lthighway/omnia-pcm-lite/releases/tag/v0.1.0)
+
 ## Rodar localmente
 
 ```powershell
