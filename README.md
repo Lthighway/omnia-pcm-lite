@@ -21,7 +21,7 @@ Abra `http://localhost:3000`. A demonstração usa `admin@omnia.local` / `omnia1
 
 ## Pagamentos
 
-O endpoint `/api/payments/checkout` cria uma assinatura mensal do plano escolhido via API oficial do Mercado Pago quando `MP_ACCESS_TOKEN` e `PUBLIC_URL` HTTPS estiverem configurados. O webhook exige `MP_WEBHOOK_SECRET`, valida `x-signature`, consulta o status oficial da assinatura e registra eventos de forma idempotente antes de atualizar o plano da empresa.
+O painel autenticado inclui a área **Plano e cobrança**. O endpoint `/api/payments/checkout` cria uma assinatura mensal do plano escolhido via API oficial do Mercado Pago quando `MP_ACCESS_TOKEN` e `PUBLIC_URL` HTTPS estiverem configurados. O webhook exige `MP_WEBHOOK_SECRET`, valida `x-signature`, consulta o status oficial da assinatura e registra eventos de forma idempotente antes de atualizar o plano da empresa. No ambiente atual, o fluxo está preparado para sandbox; não anunciar cobrança real antes da ativação de produção e de um teste completo com dados operacionais persistentes.
 
 ## Implantação pública de demonstração
 
@@ -31,13 +31,13 @@ Para aplicar o Blueprint:
 
 1. Abra `https://dashboard.render.com/blueprint/new?repo=https://github.com/Lthighway/omnia-pcm-lite`.
 2. Confirme o serviço `omnia-pcm-lite-demo` e mantenha o plano gratuito para teste.
-3. Deixe `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` e `PUBLIC_URL` vazios até possuir uma aplicação real do Mercado Pago e uma URL pública definitiva.
+3. Configure `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` e `PUBLIC_URL` somente no ambiente protegido do provedor, nunca no repositório.
 4. Clique em **Apply** e teste `/api/health` antes de divulgar o endereço.
 
 ## Limitações conhecidas do MVP
 
 - Ainda não há recuperação de senha por e-mail, PDF server-side, gestão completa de usuários pela interface ou geração automática de OS a partir da preventiva.
-- A ativação de pagamento depende de concluir a aplicação Mercado Pago, inserir os segredos no Render e testar o webhook em ambiente público.
+- O checkout de teste está configurado no Render; a ativação de pagamento em produção depende de dados comerciais, credenciais de produção e teste do webhook em ambiente público.
 - Render Free não é adequado para produção: o filesystem é efêmero, o Postgres gratuito expira e não há backups; use-o somente para prévia/teste e configure banco persistente/backup antes de clientes reais.
 
 ## Testes
